@@ -48,55 +48,6 @@ def scrape_gopray(url):
 
     return times
 
-def scrape_daaribnumar(url):
-    """Scrape prayer times from daaribnumar.ad-din.site using Playwright (JS-rendered table)."""
-
-    IQAMAH_PRAYERS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"}
-    ADHAN_ONLY     = {"Sunrise"}
-
-    NAME_MAP = {
-        "Fajr":    "Fajr",
-        "Sunrise": "Sunrise",
-        "Dhuhr":   "Zuhr",
-        "Asr":     "Asr",
-        "Maghrib": "Maghrib",
-        "Isha":    "Esha",
-    }
-
-    times = {}
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(url)
-        page.wait_for_selector("table.main", timeout=10000)
-
-        rows = page.query_selector_all("table.main tbody tr")
-        for row in rows:
-            cells = row.query_selector_all("td")
-            if len(cells) < 4:
-                continue
-
-            prayer_name = cells[0].inner_text().strip()
-            adhan_text  = cells[2].inner_text().strip()   
-            iqamah_text = cells[3].inner_text().strip()   
-
-            canonical = NAME_MAP.get(prayer_name)
-            if not canonical:
-                continue
-
-            def normalise(t):
-                return t.replace("\n", " ").strip().lower()
-
-            if canonical == "Sunrise":
-                times["Sunrise"] = normalise(adhan_text)
-            elif canonical in {"Fajr", "Zuhr", "Asr", "Maghrib", "Esha"}:
-                times[canonical] = normalise(iqamah_text)
-
-        browser.close()
-
-    return times
-
 def get_aladhan_times(suburb="Minto", country="Australia", method=2):
     """Fallback: get calculated prayer times from Aladhan API."""
     today = date.today()
@@ -196,7 +147,7 @@ def main():
     minto_resolved = resolve_times(minto_raw, fallback_suburb="Minto")
 
     print("Scraping Daar Ibn Umar...")
-    daar_raw       = scrape_daaribnumar("https://daaribnumar.ad-din.site/")
+    daar_raw       = scrape_gopray("https://gopray.com.au/place/campbelltown-dar-ibn-omar/")
     daar_resolved  = resolve_times(daar_raw, fallback_suburb="Campbelltown")
 
     ics_data = build_ics([
